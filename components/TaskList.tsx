@@ -4,24 +4,22 @@ import { useState } from 'react';
 import { TaskBlock } from '@/components/TaskBlock';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { Task, User } from '@/types/task';
+import { Task } from '@/types/task';
 import { createTask, updateTask, updateTaskScore, deleteTask } from '@/app/actions';
 
 interface TaskListProps {
     initialTasks: Task[];
-    users: User[];
+    currentUserId?: string;
 }
 
-export default function TaskList({ initialTasks, users }: TaskListProps) {
+export default function TaskList({ initialTasks, currentUserId }: TaskListProps) {
     const [isCreating, setIsCreating] = useState(false);
 
     const handleCreateTask = async (newTask: Task) => {
         const formData = new FormData();
         formData.append('title', newTask.title);
         formData.append('description', newTask.description || '');
-        if (newTask.member_id) {
-            formData.append('member_id', newTask.member_id.toString());
-        }
+        // Don't set member_id - tasks start unassigned
 
         await createTask(formData);
         setIsCreating(false);
@@ -72,7 +70,7 @@ export default function TaskList({ initialTasks, users }: TaskListProps) {
                         onDelete={handleDeleteTask}
                         onVote={() => { }} // Can't vote on draft
                         defaultEditing={true}
-                        users={users}
+                        currentUserId={currentUserId}
                     />
                 )}
 
@@ -83,7 +81,7 @@ export default function TaskList({ initialTasks, users }: TaskListProps) {
                         onUpdate={handleUpdateTask}
                         onDelete={handleDeleteTask}
                         onVote={handleVote}
-                        users={users}
+                        currentUserId={currentUserId}
                     />
                 ))}
 

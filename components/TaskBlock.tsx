@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { Pencil, Trash, Save, X, Plus } from 'lucide-react';
-import { Task, Vote, User } from '@/types/task';
+import { Task, Vote } from '@/types/task';
+import { claimTask } from '@/app/actions';
 
 interface TaskBlockProps {
     task: Task;
@@ -17,10 +18,10 @@ interface TaskBlockProps {
     onDelete: (taskId: number) => void;
     onVote: (taskId: number, newTotalScore: number) => void;
     defaultEditing?: boolean;
-    users: User[];
+    currentUserId?: string;
 }
 
-export function TaskBlock({ task, onUpdate, onDelete, onVote, defaultEditing = false, users }: TaskBlockProps) {
+export function TaskBlock({ task, onUpdate, onDelete, onVote, defaultEditing = false, currentUserId }: TaskBlockProps) {
     const [isEditing, setIsEditing] = useState(defaultEditing);
     const [editedTask, setEditedTask] = useState<Task>(task);
 
@@ -86,24 +87,6 @@ export function TaskBlock({ task, onUpdate, onDelete, onVote, defaultEditing = f
                         placeholder="Task Description..."
                         className="min-h-[100px]"
                     />
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Assignee:</span>
-                        <Select
-                            value={editedTask.member_id?.toString()}
-                            onValueChange={(value) => setEditedTask({ ...editedTask, member_id: Number(value) })}
-                        >
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Select assignee" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {users.map((user) => (
-                                    <SelectItem key={user.id} value={user.id.toString()}>
-                                        {user.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2 pt-2">
                     <Button variant="ghost" size="sm" onClick={handleCancel}>
@@ -137,7 +120,29 @@ export function TaskBlock({ task, onUpdate, onDelete, onVote, defaultEditing = f
 
                 <div className="flex items-center justify-between mt-4 mb-4">
                     <div className="flex items-center gap-2">
-                        <Badge variant="secondary">{task.assignee_name || 'Unassigned'}</Badge>
+                        {!task.member_id ? (
+                            // Unassigned - Show Claim button
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={async () => {
+                                    await claimTask(task.id);
+                                }}
+                                className="text-xs"
+                            >
+                                🙋‍♂️ Claim Task
+                            </Button>
+                        ) : task.member_id === currentUserId ? (
+                            // Assigned to me
+                            <Badge variant="default" className="bg-green-600">
+                                ✓ My Task
+                            </Badge>
+                        ) : (
+                            // Assigned to someone else
+                            <Badge variant="secondary">
+                                Assigned to {task.assignee_name || 'Unknown'}
+                            </Badge>
+                        )}
                     </div>
                     <div className="text-xs text-muted-foreground flex gap-3 font-medium">
                         <span className="bg-secondary px-2 py-1 rounded-md">Assigned Score: {task.total_score}</span>

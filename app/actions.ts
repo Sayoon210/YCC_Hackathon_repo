@@ -5,8 +5,6 @@ import { Task, User } from '@/types/task';
 import { revalidatePath } from 'next/cache';
 
 // Initialize Supabase Client for Server Actions
-// Note: In a real Next.js app with Auth, we'd use @supabase/ssr's createServerClient
-// But for this "No Auth" / "Anon Key" setup, basic client works.
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -23,6 +21,23 @@ export async function getUsers(): Promise<User[]> {
     }
 
     return data as User[];
+}
+
+export async function getCurrentUser(): Promise<User | null> {
+    const { data: { user }, error } = await supabase.auth.getUser();
+
+    if (error || !user) {
+        return null;
+    }
+
+    // Fetch user details from public.users table
+    const { data: userData } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+    return userData as User | null;
 }
 
 export async function getTasks(): Promise<Task[]> {
@@ -51,16 +66,16 @@ export async function getTasks(): Promise<Task[]> {
 export async function createTask(formData: FormData) {
     const title = formData.get('title') as string;
     const description = formData.get('description') as string;
-    const member_id = formData.get('member_id') ? Number(formData.get('member_id')) : null;
 
-    if (!title) return { error: 'Title is required' };
-
-    const { error } = await supabase.from('tasks').insert({
-        title,
-        description,
-        member_id,
-        total_score: 0, // Default
-    });
+    const { data, error } = await supabase
+        .from('tasks')
+        .insert({
+            title,
+            description: description || null,
+            member_id: null, // Always start unassigned
+            total_score: 0,
+        })
+        .select();
 
     if (error) {
         console.error('Error creating task:', error);
@@ -111,6 +126,29 @@ export async function deleteTask(id: number) {
 
     if (error) {
         console.error('Error deleting task:', error);
+        return { error: error.message };
+    }
+
+    revalidatePath('/');
+    return { success: true };
+}
+
+export async function claimTask(taskId: number) {
+    // Get current user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+        return { error: 'You must be logged in to claim a task' };
+    }
+
+    // Update task to assign to current user
+    const { error } = await supabase
+        .from('tasks')
+        .update({ member_id: user.id })
+        .eq('id', taskId);
+
+    if (error) {
+        console.error('Error claiming task:', error);
         return { error: error.message };
     }
 
