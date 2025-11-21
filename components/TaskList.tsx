@@ -48,8 +48,8 @@ export default function TaskList({ initialTasks, currentUserId }: TaskListProps)
     return (
         <div className="max-w-2xl mx-auto">
             <header className="mb-8 flex items-center justify-between">
-                <h1 className="text-3xl font-bold tracking-tight">Task List</h1>
-                <Button onClick={() => setIsCreating(true)} size="lg" className="rounded-full shadow-lg">
+                <h1 className="text-3xl font-bold tracking-tight text-white">Task List</h1>
+                <Button onClick={() => setIsCreating(true)} size="lg" className="rounded-full shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground">
                     <Plus className="h-5 w-5 mr-2" /> New Task
                 </Button>
             </header>
@@ -86,7 +86,7 @@ export default function TaskList({ initialTasks, currentUserId }: TaskListProps)
                 ))}
 
                 {initialTasks.length === 0 && !isCreating && (
-                    <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
+                    <div className="text-center py-12 text-white/50 border-2 border-dashed border-white/20 rounded-lg glass-card">
                         <p>No tasks yet. Click the button above to add one.</p>
                     </div>
                 )}

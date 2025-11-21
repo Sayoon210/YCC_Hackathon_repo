@@ -16,7 +16,7 @@ export default async function TaskPage() {
     const tasks = await getTasks();
 
     return (
-        <main className="min-h-screen bg-background p-8">
+        <main className="min-h-screen p-8">
             <div className="max-w-4xl mx-auto">
                 <ContributionPieChart tasks={tasks} />
                 <TaskList initialTasks={tasks} currentUserId={currentUser.id} />

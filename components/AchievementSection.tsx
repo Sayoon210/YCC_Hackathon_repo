@@ -35,7 +35,7 @@ export function AchievementSection({ task, currentUserId, totalTeamMembers = 5 }
 
     if (!hasActivities) {
         return (
-            <div className="text-xs text-muted-foreground italic">
+            <div className="text-xs text-white/50 italic">
                 Evaluation available after activity report submission.
             </div>
         );
@@ -44,59 +44,59 @@ export function AchievementSection({ task, currentUserId, totalTeamMembers = 5 }
     return (
         <div className="space-y-3">
             <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold">Peer Achievement Review</h4>
-                <Badge variant="outline" className="text-xs">
+                <h4 className="text-sm font-semibold text-white/80">Peer Achievement Review</h4>
+                <Badge variant="outline" className="text-xs text-white/50 border-white/20">
                     Evaluations: {reviewCount}
                 </Badge>
             </div>
 
             {isAssignee ? (
-                <div className="p-3 bg-muted/30 rounded-lg text-sm text-center text-muted-foreground">
+                <div className="p-3 bg-white/5 rounded-lg text-sm text-center text-white/60 border border-white/10">
                     {task.achieved_score !== null
                         ? `Final Achievement Score: ${task.achieved_score}`
                         : "Waiting for peer evaluations..."}
                 </div>
             ) : hasReviewed ? (
-                <div className="p-3 bg-green-50 text-green-700 rounded-lg text-sm text-center font-medium border border-green-200">
+                <div className="p-3 bg-green-500/20 text-green-200 rounded-lg text-sm text-center font-medium border border-green-500/30">
                     ✓ Review Submitted ({task.my_review?.score} pts)
                 </div>
             ) : (
                 <div className="grid grid-cols-4 gap-2">
                     <Button
                         variant="outline"
-                        className="flex flex-col h-auto py-2 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                        className="flex flex-col h-auto py-2 border-white/20 bg-white/5 text-white hover:bg-red-500/20 hover:text-red-200 hover:border-red-500/30"
                         onClick={() => handleVote(0)}
                         disabled={isSubmitting}
                     >
                         <span className="text-lg font-bold">0</span>
-                        <span className="text-[10px] font-normal">Unapproved</span>
+                        <span className="text-[10px] font-normal opacity-70">Unapproved</span>
                     </Button>
                     <Button
                         variant="outline"
-                        className="flex flex-col h-auto py-2 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200"
+                        className="flex flex-col h-auto py-2 border-white/20 bg-white/5 text-white hover:bg-orange-500/20 hover:text-orange-200 hover:border-orange-500/30"
                         onClick={() => handleVote(2)}
                         disabled={isSubmitting}
                     >
                         <span className="text-lg font-bold">2</span>
-                        <span className="text-[10px] font-normal">Not Satisfied</span>
+                        <span className="text-[10px] font-normal opacity-70">Not Satisfied</span>
                     </Button>
                     <Button
                         variant="outline"
-                        className="flex flex-col h-auto py-2 hover:bg-yellow-50 hover:text-yellow-600 hover:border-yellow-200"
+                        className="flex flex-col h-auto py-2 border-white/20 bg-white/5 text-white hover:bg-yellow-500/20 hover:text-yellow-200 hover:border-yellow-500/30"
                         onClick={() => handleVote(3)}
                         disabled={isSubmitting}
                     >
                         <span className="text-lg font-bold">3</span>
-                        <span className="text-[10px] font-normal">Minor Changes</span>
+                        <span className="text-[10px] font-normal opacity-70">Minor Changes</span>
                     </Button>
                     <Button
                         variant="outline"
-                        className="flex flex-col h-auto py-2 hover:bg-green-50 hover:text-green-600 hover:border-green-200"
+                        className="flex flex-col h-auto py-2 border-white/20 bg-white/5 text-white hover:bg-green-500/20 hover:text-green-200 hover:border-green-500/30"
                         onClick={() => handleVote(5)}
                         disabled={isSubmitting}
                     >
                         <span className="text-lg font-bold">5</span>
-                        <span className="text-[10px] font-normal">Approved</span>
+                        <span className="text-[10px] font-normal opacity-70">Approved</span>
                     </Button>
                 </div>
             )}

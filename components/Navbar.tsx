@@ -6,6 +6,7 @@ import { User } from '@/types/task';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { LogOut, User as UserIcon, LayoutDashboard, ListTodo } from 'lucide-react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -35,25 +36,32 @@ export function Navbar({ user }: NavbarProps) {
     if (!user) return null;
 
     return (
-        <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+        <nav className="glass sticky top-0 z-50 border-b-0">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex h-16 items-center justify-between">
                     <div className="flex items-center gap-8">
-                        <Link href="/dashboard" className="flex items-center gap-2 font-bold text-xl text-primary">
-                            <LayoutDashboard className="h-6 w-6" />
-                            <span>TeamSync</span>
+                        <Link href="/dashboard" className="flex items-center gap-2 font-bold text-xl text-white hover:text-cyan-400 transition-colors">
+                            <div className="relative h-8 w-8">
+                                <Image
+                                    src="/fairload-logo.png"
+                                    alt="Fairload Logo"
+                                    fill
+                                    className="object-contain invert"
+                                />
+                            </div>
+                            <span>Fairload</span>
                         </Link>
                         <div className="hidden md:flex items-center gap-6">
                             <Link
                                 href="/dashboard"
-                                className={`text-sm font-medium transition-colors hover:text-primary ${pathname === '/dashboard' ? 'text-primary' : 'text-muted-foreground'
+                                className={`text-sm font-medium transition-colors hover:text-cyan-400 ${pathname === '/dashboard' ? 'text-cyan-400' : 'text-muted-foreground'
                                     }`}
                             >
                                 Dashboard
                             </Link>
                             <Link
                                 href="/tasks"
-                                className={`text-sm font-medium transition-colors hover:text-primary ${pathname === '/tasks' ? 'text-primary' : 'text-muted-foreground'
+                                className={`text-sm font-medium transition-colors hover:text-cyan-400 ${pathname === '/tasks' ? 'text-cyan-400' : 'text-muted-foreground'
                                     }`}
                             >
                                 Tasks

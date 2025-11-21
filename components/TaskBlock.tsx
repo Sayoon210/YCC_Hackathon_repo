@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -116,32 +116,32 @@ export function TaskBlock({ task, onUpdate, onDelete, onVote, defaultEditing = f
 
     if (isEditing) {
         return (
-            <Card className="mb-4 shadow-md">
-                <CardHeader className="pb-2">
+            <div className="glass-card mb-4 p-6">
+                <div className="pb-4">
                     <Input
                         value={editedTask.title}
                         onChange={(e) => setEditedTask({ ...editedTask, title: e.target.value })}
                         placeholder="Task Title"
-                        className="font-bold text-lg"
+                        className="font-bold text-lg bg-white/10 border-white/20 text-white placeholder:text-white/50"
                     />
-                </CardHeader>
-                <CardContent className="space-y-4">
+                </div>
+                <div className="space-y-4">
                     <Textarea
                         value={editedTask.description || ''}
                         onChange={(e) => setEditedTask({ ...editedTask, description: e.target.value })}
                         placeholder="Task Description..."
-                        className="min-h-[100px]"
+                        className="min-h-[100px] bg-white/10 border-white/20 text-white placeholder:text-white/50"
                     />
-                </CardContent>
-                <CardFooter className="flex justify-end gap-2 pt-2">
-                    <Button variant="ghost" size="sm" onClick={handleCancel}>
+                </div>
+                <div className="flex justify-end gap-2 pt-4">
+                    <Button variant="ghost" size="sm" onClick={handleCancel} className="text-white/70 hover:text-white hover:bg-white/10">
                         <X className="h-4 w-4 mr-1" /> Cancel
                     </Button>
-                    <Button size="sm" onClick={handleSave}>
+                    <Button size="sm" onClick={handleSave} className="bg-primary hover:bg-primary/90">
                         <Save className="h-4 w-4 mr-1" /> Save
                     </Button>
-                </CardFooter>
-            </Card>
+                </div>
+            </div>
         );
     }
 
@@ -154,55 +154,52 @@ export function TaskBlock({ task, onUpdate, onDelete, onVote, defaultEditing = f
                 return (
                     <div
                         key={activity.id}
-                        className="absolute top-0 left-0 right-0 cursor-pointer"
+                        className="absolute top-0 left-0 right-0 bottom-0 cursor-pointer" // Added bottom-0 to match height
                         style={{
                             transform: `translateX(${offsetRight}px)`,
                             zIndex: activities.length - index,
                         }}
                         onClick={() => setSelectedActivity(activity)}
                     >
-                        <Card
-                            className="shadow-lg border-2 hover:shadow-2xl transition-shadow"
+                        <div
+                            className="h-full w-full rounded-xl border border-white/10 shadow-lg transition-all hover:brightness-110"
                             style={{
-                                backgroundColor: `rgb(${219 - index * 10} ${234 - index * 5} 254)`,
+                                backgroundColor: `rgba(30, 41, 59, ${0.8 - index * 0.1})`, // Plain slate color, fading out slightly
                             }}
                         >
-                            <CardContent className="pt-6">
-                                <ActivityCard activity={activity} />
-                            </CardContent>
-                        </Card>
+                            {/* Content removed for plain box look */}
+                        </div>
                     </div>
                 );
             })}
 
             {/* Main Task Card */}
-            <Card
-                className="hover:shadow-xl transition-all relative bg-white"
+            <div
+                className="glass-card p-6 hover:shadow-2xl transition-all relative"
                 style={{
                     zIndex: activities.length + 10,
-                    // Reverted to white background as requested
                 }}
             >
-                <CardHeader className="flex flex-row items-start justify-between pb-2 space-y-0">
-                    <CardTitle
+                <div className="flex flex-row items-start justify-between pb-2 space-y-0">
+                    <h3
                         className="text-3xl font-extrabold transition-colors duration-300"
                         style={{
-                            color: achievementColor || 'inherit'
+                            color: achievementColor || '#ffffff'
                         }}
                     >
                         {task.title || 'Untitled Task'}
-                    </CardTitle>
+                    </h3>
                     <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)}>
-                            <Pencil className="h-4 w-4 text-muted-foreground" />
+                        <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)} className="text-white/70 hover:text-white hover:bg-white/10">
+                            <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => onDelete(task.id)}>
-                            <Trash className="h-4 w-4 text-destructive" />
+                        <Button variant="ghost" size="icon" onClick={() => onDelete(task.id)} className="text-red-400 hover:text-red-300 hover:bg-red-400/10">
+                            <Trash className="h-4 w-4" />
                         </Button>
                     </div>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap mb-4">
+                </div>
+                <div>
+                    <p className="text-sm text-white/70 whitespace-pre-wrap mb-4">
                         {task.description || 'No description provided.'}
                     </p>
 
@@ -213,59 +210,59 @@ export function TaskBlock({ task, onUpdate, onDelete, onVote, defaultEditing = f
                                     size="sm"
                                     variant="outline"
                                     onClick={async () => { await claimTask(task.id); }}
-                                    className="text-xs"
+                                    className="text-xs border-white/20 bg-white/5 text-white hover:bg-white/10"
                                 >
                                     🙋‍♂️ Claim Task
                                 </Button>
                             ) : task.member_id === currentUserId ? (
-                                <Badge variant="default" className="bg-green-600">
+                                <Badge variant="default" className="bg-green-600/80 text-white border-0">
                                     ✓ My Task
                                 </Badge>
                             ) : (
-                                <Badge variant="secondary">
+                                <Badge variant="secondary" className="bg-white/10 text-white border-white/20">
                                     Assigned to {task.assignee_name || 'Unknown'}
                                 </Badge>
                             )}
                         </div>
-                        <div className="text-xs text-muted-foreground flex gap-3 font-medium">
-                            <span className="bg-secondary px-2 py-1 rounded-md">Assigned Score: {task.total_score}</span>
-                            <span className="bg-secondary px-2 py-1 rounded-md">Achievement: {task.achieved_score || '-'}</span>
+                        <div className="text-xs text-white/60 flex gap-3 font-medium">
+                            <span className="bg-white/10 px-2 py-1 rounded-md">Assigned Score: {task.total_score}</span>
+                            <span className="bg-white/10 px-2 py-1 rounded-md">Achievement: {task.achieved_score || '-'}</span>
                         </div>
                     </div>
 
                     {/* Voting Section */}
                     {!task.member_id ? (
-                        <div className="border-t pt-4 mt-4">
+                        <div className="border-t border-white/10 pt-4 mt-4">
                             <div className="flex items-center justify-between mb-2">
-                                <h4 className="text-sm font-semibold text-muted-foreground">Score Voting</h4>
-                                <Badge variant="outline" className="text-xs">Task must be claimed first</Badge>
+                                <h4 className="text-sm font-semibold text-white/80">Score Voting</h4>
+                                <Badge variant="outline" className="text-xs text-white/50 border-white/20">Task must be claimed first</Badge>
                             </div>
-                            <div className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg opacity-50">
-                                <span className="text-sm font-medium w-24 text-muted-foreground">Your Score: 0</span>
+                            <div className="flex items-center gap-4 p-3 bg-white/5 rounded-lg opacity-50">
+                                <span className="text-sm font-medium w-24 text-white/50">Your Score: 0</span>
                                 <Slider value={[0]} max={10} step={0.5} className="flex-1" disabled />
                             </div>
                         </div>
                     ) : task.member_id === currentUserId ? (
-                        <div className="border-t pt-4 mt-4">
+                        <div className="border-t border-white/10 pt-4 mt-4">
                             <div className="flex items-center justify-between mb-2">
-                                <h4 className="text-sm font-semibold text-muted-foreground">Score Voting</h4>
-                                <Badge variant="outline" className="text-xs">Cannot vote on your own task</Badge>
+                                <h4 className="text-sm font-semibold text-white/80">Score Voting</h4>
+                                <Badge variant="outline" className="text-xs text-white/50 border-white/20">Cannot vote on your own task</Badge>
                             </div>
-                            <div className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg opacity-50">
-                                <span className="text-sm font-medium w-24 text-muted-foreground">Your Score: 0</span>
+                            <div className="flex items-center gap-4 p-3 bg-white/5 rounded-lg opacity-50">
+                                <span className="text-sm font-medium w-24 text-white/50">Your Score: 0</span>
                                 <Slider value={[0]} max={10} step={0.5} className="flex-1" disabled />
                             </div>
                         </div>
                     ) : (
-                        <div className="border-t pt-4 mt-4">
+                        <div className="border-t border-white/10 pt-4 mt-4">
                             <div className="flex items-center justify-between mb-2">
-                                <h4 className="text-sm font-semibold">Score Voting</h4>
+                                <h4 className="text-sm font-semibold text-white/80">Score Voting</h4>
                                 {task.my_vote !== undefined && (
-                                    <Badge variant="secondary" className="text-xs">You voted: {task.my_vote}</Badge>
+                                    <Badge variant="secondary" className="text-xs bg-white/10 text-white border-white/20">You voted: {task.my_vote}</Badge>
                                 )}
                             </div>
-                            <div className="flex items-center gap-4 p-3 bg-secondary/20 rounded-lg">
-                                <span className="text-sm font-medium w-24">Your Score: {myVoteScore[0]}</span>
+                            <div className="flex items-center gap-4 p-3 bg-white/5 rounded-lg">
+                                <span className="text-sm font-medium w-24 text-white">Your Score: {myVoteScore[0]}</span>
                                 <Slider
                                     value={myVoteScore}
                                     onValueChange={handleVoteChange}
@@ -279,17 +276,17 @@ export function TaskBlock({ task, onUpdate, onDelete, onVote, defaultEditing = f
 
                     {/* Achievement Evaluation Section */}
                     {task.member_id && (
-                        <div className="border-t pt-4 mt-4">
+                        <div className="border-t border-white/10 pt-4 mt-4">
                             <AchievementSection task={task} currentUserId={currentUserId} />
                         </div>
                     )}
 
                     {/* Activity Reports - Visible to all */}
                     {task.member_id && (
-                        <div className="border-t pt-4 mt-4">
+                        <div className="border-t border-white/10 pt-4 mt-4">
                             <div className="flex items-center justify-between mb-2">
-                                <h4 className="text-sm font-semibold">Progress Reports</h4>
-                                <Badge variant="outline" className="text-xs">
+                                <h4 className="text-sm font-semibold text-white/80">Progress Reports</h4>
+                                <Badge variant="outline" className="text-xs text-white/50 border-white/20">
                                     {activities.length} report{activities.length !== 1 ? 's' : ''}
                                 </Badge>
                             </div>
@@ -300,7 +297,7 @@ export function TaskBlock({ task, onUpdate, onDelete, onVote, defaultEditing = f
                                     variant="outline"
                                     size="sm"
                                     onClick={() => setIsWritingReport(true)}
-                                    className="w-full mb-3"
+                                    className="w-full mb-3 border-white/20 bg-white/5 text-white hover:bg-white/10"
                                 >
                                     <FileText className="h-4 w-4 mr-2" />
                                     Write Progress Report
@@ -309,23 +306,24 @@ export function TaskBlock({ task, onUpdate, onDelete, onVote, defaultEditing = f
 
                             {/* Write Report Form - Assignee only */}
                             {isAssignee && isWritingReport && (
-                                <div className="space-y-3 p-4 bg-blue-50 rounded-lg border border-blue-200 mb-3">
+                                <div className="space-y-3 p-4 bg-white/5 rounded-lg border border-white/10 mb-3">
                                     <Input
                                         placeholder="Report Title"
                                         value={reportTitle}
                                         onChange={(e) => setReportTitle(e.target.value)}
+                                        className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
                                     />
                                     <Textarea
                                         placeholder="Describe your progress, challenges, or updates..."
                                         value={reportContent}
                                         onChange={(e) => setReportContent(e.target.value)}
-                                        className="min-h-[100px]"
+                                        className="min-h-[100px] bg-white/10 border-white/20 text-white placeholder:text-white/50"
                                     />
                                     <Input
                                         type="file"
                                         accept="*/*"
                                         onChange={(e) => setReportFile(e.target.files?.[0] || null)}
-                                        className="text-sm"
+                                        className="text-sm text-white/70 file:bg-white/10 file:text-white file:border-0 file:mr-4 file:py-2 file:px-4 file:rounded-full hover:file:bg-white/20"
                                     />
                                     <div className="flex justify-end gap-2">
                                         <Button
@@ -337,6 +335,7 @@ export function TaskBlock({ task, onUpdate, onDelete, onVote, defaultEditing = f
                                                 setReportContent('');
                                                 setReportFile(null);
                                             }}
+                                            className="text-white/70 hover:text-white hover:bg-white/10"
                                         >
                                             Cancel
                                         </Button>
@@ -344,6 +343,7 @@ export function TaskBlock({ task, onUpdate, onDelete, onVote, defaultEditing = f
                                             size="sm"
                                             onClick={handleSubmitActivity}
                                             disabled={!reportTitle.trim() || !reportContent.trim()}
+                                            className="bg-primary hover:bg-primary/90"
                                         >
                                             Submit Report
                                         </Button>
@@ -353,27 +353,30 @@ export function TaskBlock({ task, onUpdate, onDelete, onVote, defaultEditing = f
 
                             {/* Info message */}
                             {activities.length === 0 ? (
-                                <p className="text-xs text-muted-foreground text-center py-2">
+                                <p className="text-xs text-white/50 text-center py-2">
                                     No progress reports yet. {isAssignee && "Click 'Write Progress Report' to add one."}
                                 </p>
                             ) : (
-                                <p className="text-xs text-muted-foreground text-center py-2">
+                                <p className="text-xs text-white/50 text-center py-2">
                                     📚 {activities.length} report{activities.length !== 1 ? 's' : ''} stacked to the right
                                 </p>
                             )}
                         </div>
                     )}
-                </CardContent>
-            </Card>
+                </div>
+            </div>
 
             <Dialog open={!!selectedActivity} onOpenChange={(open) => !open && setSelectedActivity(null)}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-2xl glass-card border-white/10 text-white !bg-black/80">
                     <DialogHeader>
                         <DialogTitle>Activity Report Details</DialogTitle>
                     </DialogHeader>
                     {selectedActivity && (
                         <div className="mt-4">
-                            <ActivityCard activity={selectedActivity} />
+                            <ActivityCard
+                                activity={selectedActivity}
+                                className="bg-transparent border-0 shadow-none text-white"
+                            />
                         </div>
                     )}
                 </DialogContent>

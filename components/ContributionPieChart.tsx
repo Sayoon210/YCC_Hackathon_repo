@@ -3,7 +3,6 @@
 import { useMemo } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label } from 'recharts';
 import { Task } from '@/types/task';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface ContributionPieChartProps {
     tasks: Task[];
@@ -100,12 +99,12 @@ export function ContributionPieChart({ tasks }: ContributionPieChartProps) {
         if (active && payload && payload.length) {
             const data = payload[0].payload as ChartSegment;
             return (
-                <div className="bg-white p-3 border rounded-lg shadow-lg text-sm">
+                <div className="glass-card p-3 border border-white/10 shadow-lg text-sm text-white">
                     <p className="font-bold mb-1">{data.name}</p>
-                    <p className="text-muted-foreground">
-                        Progress: <span className="font-medium text-foreground">{Math.round(payload[0].value)}</span> / {data.totalForUser} pts
+                    <p className="text-white/70">
+                        Progress: <span className="font-medium text-white">{Math.round(payload[0].value)}</span> / {data.totalForUser} pts
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-xs text-white/50 mt-1">
                         ({data.percentage}% Completed)
                     </p>
                     <div className="mt-2 text-xs flex items-center gap-2">
@@ -123,44 +122,42 @@ export function ContributionPieChart({ tasks }: ContributionPieChartProps) {
     }
 
     return (
-        <Card className="mb-8">
-            <CardHeader>
-                <CardTitle>Project Contribution & Progress</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="h-[300px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie
-                                data={chartData}
-                                dataKey="value"
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={80}
-                                outerRadius={110}
-                                stroke="none"
-                                paddingAngle={2}
-                            >
-                                {chartData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                                ))}
-                                <Label
-                                    value={totalProjectScore}
-                                    position="center"
-                                    className="fill-foreground text-4xl font-bold"
-                                />
-                                <Label
-                                    value="Total Points"
-                                    position="center"
-                                    dy={25}
-                                    className="fill-muted-foreground text-sm"
-                                />
-                            </Pie>
-                            <Tooltip content={<CustomTooltip />} />
-                        </PieChart>
-                    </ResponsiveContainer>
-                </div>
-            </CardContent>
-        </Card>
+        <div className="glass-card mb-8 p-6">
+            <div className="pb-4">
+                <h3 className="text-xl font-bold text-white">Project Contribution & Progress</h3>
+            </div>
+            <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                        <Pie
+                            data={chartData}
+                            dataKey="value"
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={80}
+                            outerRadius={110}
+                            stroke="none"
+                            paddingAngle={2}
+                        >
+                            {chartData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.fill} />
+                            ))}
+                            <Label
+                                value={totalProjectScore}
+                                position="center"
+                                className="fill-white text-4xl font-bold"
+                            />
+                            <Label
+                                value="Total Points"
+                                position="center"
+                                dy={25}
+                                className="fill-white/60 text-sm"
+                            />
+                        </Pie>
+                        <Tooltip content={<CustomTooltip />} />
+                    </PieChart>
+                </ResponsiveContainer>
+            </div>
+        </div>
     );
 }

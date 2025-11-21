@@ -14,11 +14,11 @@ export default async function DashboardPage() {
     const logs = await getSystemLogs();
 
     return (
-        <main className="min-h-screen bg-background p-8">
+        <main className="min-h-screen p-8">
             <div className="max-w-7xl mx-auto space-y-8">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-                    <p className="text-muted-foreground">
+                    <h1 className="text-3xl font-bold tracking-tight text-white">Dashboard</h1>
+                    <p className="text-white/70">
                         Overview of team performance and system activity.
                     </p>
                 </div>
@@ -26,10 +26,7 @@ export default async function DashboardPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Left Column: Charts (Takes up 2 columns on large screens) */}
                     <div className="lg:col-span-2 space-y-8">
-                        <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
-                            <h2 className="text-xl font-semibold mb-4">Project Contribution</h2>
-                            <ContributionPieChart tasks={tasks} />
-                        </div>
+                        <ContributionPieChart tasks={tasks} />
                     </div>
 
                     {/* Right Column: Activity Log */}
