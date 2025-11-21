@@ -43,14 +43,33 @@ export function TaskBlock({ task, onUpdate, onDelete, onVote, defaultEditing = f
         if (total === 0) return undefined;
         const ratio = Math.min(Math.max(achieved / total, 0), 1); // Clamp 0-1
 
-        // Deep Red (#5F0726) -> RGB(95, 7, 38)
-        const startColor = [95, 7, 38];
-        // Persian Green (#37C6AB) -> RGB(55, 198, 171)
-        const endColor = [55, 198, 171];
+        // Gradient Stops: Red -> Orange -> Yellow -> Light Green -> Green
+        const stops = [
+            { pos: 0.0, color: [220, 40, 40] },   // Red
+            { pos: 0.25, color: [255, 140, 0] },  // Orange
+            { pos: 0.5, color: [255, 200, 0] },   // Yellow
+            { pos: 0.75, color: [130, 220, 0] },  // Light Green
+            { pos: 1.0, color: [0, 160, 120] }    // Teal/Green
+        ];
 
-        const r = Math.round(startColor[0] + (endColor[0] - startColor[0]) * ratio);
-        const g = Math.round(startColor[1] + (endColor[1] - startColor[1]) * ratio);
-        const b = Math.round(startColor[2] + (endColor[2] - startColor[2]) * ratio);
+        // Find the segment we are in
+        let start = stops[0];
+        let end = stops[stops.length - 1];
+
+        for (let i = 0; i < stops.length - 1; i++) {
+            if (ratio >= stops[i].pos && ratio <= stops[i + 1].pos) {
+                start = stops[i];
+                end = stops[i + 1];
+                break;
+            }
+        }
+
+        // Interpolate within the segment
+        const segmentRatio = (ratio - start.pos) / (end.pos - start.pos);
+
+        const r = Math.round(start.color[0] + (end.color[0] - start.color[0]) * segmentRatio);
+        const g = Math.round(start.color[1] + (end.color[1] - start.color[1]) * segmentRatio);
+        const b = Math.round(start.color[2] + (end.color[2] - start.color[2]) * segmentRatio);
 
         return `rgb(${r}, ${g}, ${b})`;
     };
@@ -161,12 +180,18 @@ export function TaskBlock({ task, onUpdate, onDelete, onVote, defaultEditing = f
                 className="hover:shadow-xl transition-all relative bg-white"
                 style={{
                     zIndex: activities.length + 10,
-                    borderColor: achievementColor,
-                    borderWidth: achievementColor ? '3px' : undefined,
+                    // Reverted to white background as requested
                 }}
             >
                 <CardHeader className="flex flex-row items-start justify-between pb-2 space-y-0">
-                    <CardTitle className="text-lg font-bold">{task.title || 'Untitled Task'}</CardTitle>
+                    <CardTitle
+                        className="text-3xl font-extrabold transition-colors duration-300"
+                        style={{
+                            color: achievementColor || 'inherit'
+                        }}
+                    >
+                        {task.title || 'Untitled Task'}
+                    </CardTitle>
                     <div className="flex gap-1">
                         <Button variant="ghost" size="icon" onClick={() => setIsEditing(true)}>
                             <Pencil className="h-4 w-4 text-muted-foreground" />
