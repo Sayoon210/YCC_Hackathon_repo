@@ -1,14 +1,12 @@
-import TaskList from '@/components/TaskList';
-import { getTasks, getCurrentUser } from '@/app/actions';
+import { getCurrentUser } from '@/app/actions';
+import { redirect } from 'next/navigation';
 
-// This is a Server Component
-export default async function TaskPage() {
-  const tasks = await getTasks();
-  const currentUser = await getCurrentUser();
+export default async function Home() {
+  const user = await getCurrentUser();
 
-  return (
-    <main className="min-h-screen bg-background p-8">
-      <TaskList initialTasks={tasks} currentUserId={currentUser?.id} />
-    </main>
-  );
+  if (user) {
+    redirect('/task');
+  } else {
+    redirect('/login');
+  }
 }

@@ -78,14 +78,143 @@ export async function getTasks(): Promise<Task[]> {
         }
     }
 
+    // Fetch activities for all tasks
+    const taskIds = data.map(t => t.id);
+    const { data: activitiesData } = await supabase
+        .from('activities')
+        .select('*')
+        .in('task_id', taskIds)
+        .order('sequence', { ascending: true });
+
+    // Group activities by task_id
+    const activitiesByTask: { [taskId: number]: any[] } = {};
+    if (activitiesData) {
+        activitiesData.forEach(activity => {
+            if (!activitiesByTask[activity.task_id]) {
+                activitiesByTask[activity.task_id] = [];
+            }
+            activitiesByTask[activity.task_id].push(activity);
+        });
+    }
+
+    // Fetch achievement reviews for current user
+    let userReviews: { [taskId: number]: any } = {};
+    let reviewCounts: { [taskId: number]: number } = {};
+
+    if (user) {
+        const { data: reviewsData } = await supabase
+            .from('achievement_reviews')
+            .select('*')
+            .eq('reviewer_id', user.id)
+            .in('task_id', taskIds);
+
+        if (reviewsData) {
+            userReviews = reviewsData.reduce((acc, review) => {
+                acc[review.task_id] = review;
+                return acc;
+            }, {} as { [taskId: number]: any });
+        }
+    }
+
+    // Fetch review counts for all tasks
+    const { data: countsData } = await supabase
+        .from('achievement_reviews')
+        .select('task_id');
+
+    if (countsData) {
+        reviewCounts = countsData.reduce((acc: any, curr) => {
+            acc[curr.task_id] = (acc[curr.task_id] || 0) + 1;
+            return acc;
+        }, {});
+    }
+
     // Map DB result to Task interface
     const mappedTasks = data.map((item: any) => ({
         ...item,
         assignee_name: item.assignee?.name || 'Unassigned',
         my_vote: userVotes[item.id] || undefined,
+        activities: activitiesByTask[item.id] || [],
+        my_review: userReviews[item.id] || undefined,
+        reviews_count: reviewCounts[item.id] || 0,
     }));
 
     return mappedTasks;
+}
+
+export async function submitAchievementReview(taskId: number, score: number) {
+    const supabase = await createClient();
+
+    // 1. Authenticate
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return { error: 'Must be logged in' };
+
+    // 2. Check Task & Assignee
+    const { data: task } = await supabase
+        .from('tasks')
+        .select('member_id, total_score')
+        .eq('id', taskId)
+        .single();
+
+    if (!task) return { error: 'Task not found' };
+    if (task.member_id === user.id) return { error: 'Cannot review your own task' };
+
+    // 3. Check Activities (Prerequisite)
+    const { count: activityCount } = await supabase
+        .from('activities')
+        .select('*', { count: 'exact', head: true })
+        .eq('task_id', taskId);
+
+    if (!activityCount || activityCount === 0) {
+        return { error: 'Task has no activity reports' };
+    }
+
+    // 4. Upsert Review
+    const { error: reviewError } = await supabase
+        .from('achievement_reviews')
+        .upsert({
+            task_id: taskId,
+            reviewer_id: user.id,
+            score: score
+        }, { onConflict: 'task_id,reviewer_id' });
+
+    if (reviewError) return { error: reviewError.message };
+
+    // 5. Check Completion & Calculate Score
+    // Get total team size
+    const { count: totalUsers } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true });
+
+    if (!totalUsers) return { success: true }; // Should not happen
+
+    // Get current review count for this task
+    const { data: reviews } = await supabase
+        .from('achievement_reviews')
+        .select('score')
+        .eq('task_id', taskId);
+
+    const currentReviewCount = reviews?.length || 0;
+    const requiredReviews = totalUsers - 1; // Exclude assignee
+
+    // If all reviews are in, calculate final score
+    if (currentReviewCount >= requiredReviews) {
+        const maxPossibleScore = requiredReviews * 5;
+        const actualScoreSum = reviews?.reduce((sum, r) => sum + r.score, 0) || 0;
+        const ratio = actualScoreSum / maxPossibleScore;
+
+        // Calculate final achieved score (based on task.total_score * ratio)
+        // Round to nearest integer
+        const finalAchievedScore = Math.round(task.total_score * ratio);
+
+        // Update task
+        await supabase
+            .from('tasks')
+            .update({ achieved_score: finalAchievedScore })
+            .eq('id', taskId);
+    }
+
+    revalidatePath('/');
+    return { success: true };
 }
 
 export async function createTask(formData: FormData) {
@@ -225,6 +354,85 @@ export async function claimTask(taskId: number) {
     if (error) {
         console.error('Error claiming task:', error);
         return { error: error.message };
+    }
+
+    revalidatePath('/');
+    return { success: true };
+}
+
+export async function submitActivity(taskId: number, formData: FormData) {
+    const supabase = await createClient();
+
+    // Get current user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+        return { error: 'You must be logged in to submit an activity' };
+    }
+
+    // Verify user is the assignee
+    const { data: task } = await supabase
+        .from('tasks')
+        .select('member_id')
+        .eq('id', taskId)
+        .single();
+
+    if (!task || task.member_id !== user.id) {
+        return { error: 'Only the task assignee can submit activities' };
+    }
+
+    // Get next sequence number
+    const { data: existingActivities } = await supabase
+        .from('activities')
+        .select('sequence')
+        .eq('task_id', taskId)
+        .order('sequence', { ascending: false })
+        .limit(1);
+
+    const nextSequence = existingActivities && existingActivities.length > 0
+        ? existingActivities[0].sequence + 1
+        : 1;
+
+    // Handle file upload if provided
+    let fileUrl: string | null = null;
+    const file = formData.get('file') as File | null;
+
+    if (file && file.size > 0) {
+        const fileName = `${taskId}/${Date.now()}-${file.name}`;
+        const { data: uploadData, error: uploadError } = await supabase
+            .storage
+            .from('activity-proofs')
+            .upload(fileName, file);
+
+        if (uploadError) {
+            console.error('File upload error:', uploadError);
+            return { error: 'Failed to upload file' };
+        }
+
+        // Get public URL
+        const { data: { publicUrl } } = supabase
+            .storage
+            .from('activity-proofs')
+            .getPublicUrl(fileName);
+
+        fileUrl = publicUrl;
+    }
+
+    // Insert activity
+    const { error: insertError } = await supabase
+        .from('activities')
+        .insert({
+            task_id: taskId,
+            user_id: user.id,
+            title: formData.get('title') as string,
+            content: formData.get('content') as string,
+            file_url: fileUrl,
+            sequence: nextSequence,
+        });
+
+    if (insertError) {
+        console.error('Error creating activity:', insertError);
+        return { error: insertError.message };
     }
 
     revalidatePath('/');
