@@ -2,6 +2,8 @@ import TaskList from '@/components/TaskList';
 import { getTasks, getCurrentUser } from '@/app/actions';
 import { redirect } from 'next/navigation';
 
+import { ContributionPieChart } from '@/components/ContributionPieChart';
+
 // This is a Server Component
 export default async function TaskPage() {
     const currentUser = await getCurrentUser();
@@ -15,7 +17,10 @@ export default async function TaskPage() {
 
     return (
         <main className="min-h-screen bg-background p-8">
-            <TaskList initialTasks={tasks} currentUserId={currentUser.id} />
+            <div className="max-w-4xl mx-auto">
+                <ContributionPieChart tasks={tasks} />
+                <TaskList initialTasks={tasks} currentUserId={currentUser.id} />
+            </div>
         </main>
     );
 }
