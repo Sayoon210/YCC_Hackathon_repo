@@ -4,6 +4,50 @@ import { createClient } from '@/utils/supabase/server';
 import { Task, User } from '@/types/task';
 import { revalidatePath } from 'next/cache';
 
+// System Logging Utility
+async function logSystemAction(
+    supabase: any,
+    userId: string,
+    actionType: string,
+    details: string,
+    relatedTaskId?: number
+) {
+    const { error } = await supabase
+        .from('system_logs')
+        .insert({
+            user_id: userId,
+            action_type: actionType,
+            details: details,
+            related_task_id: relatedTaskId || null
+        });
+
+    if (error) {
+        console.error('Error logging system action:', error);
+    }
+}
+
+export async function getSystemLogs() {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+        .from('system_logs')
+        .select(`
+            *,
+            user:users!user_id (
+                name
+            )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+    if (error) {
+        console.error('Error fetching system logs:', error);
+        return [];
+    }
+
+    return data;
+}
+
 export async function getUsers(): Promise<User[]> {
     const supabase = await createClient();
 
@@ -179,6 +223,9 @@ export async function submitAchievementReview(taskId: number, score: number) {
 
     if (reviewError) return { error: reviewError.message };
 
+    // Log Action
+    await logSystemAction(supabase, user.id, 'REVIEW', `Evaluated achievement with score ${score}`, taskId);
+
     // 5. Check Completion & Calculate Score
     // Get total team size
     const { count: totalUsers } = await supabase
@@ -220,6 +267,9 @@ export async function submitAchievementReview(taskId: number, score: number) {
 export async function createTask(formData: FormData) {
     const supabase = await createClient();
 
+    // Get current user for logging
+    const { data: { user } } = await supabase.auth.getUser();
+
     const title = formData.get('title') as string;
     const description = formData.get('description') as string;
 
@@ -231,11 +281,16 @@ export async function createTask(formData: FormData) {
             member_id: null, // Always start unassigned
             total_score: 0,
         })
-        .select();
+        .select()
+        .single();
 
     if (error) {
         console.error('Error creating task:', error);
         return { error: error.message };
+    }
+
+    if (user) {
+        await logSystemAction(supabase, user.id, 'CREATE', `Created task '${title}'`, data.id);
     }
 
     revalidatePath('/');
@@ -244,6 +299,7 @@ export async function createTask(formData: FormData) {
 
 export async function updateTask(task: Task) {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
     const { error } = await supabase
         .from('tasks')
@@ -258,6 +314,38 @@ export async function updateTask(task: Task) {
     if (error) {
         console.error('Error updating task:', error);
         return { error: error.message };
+    }
+
+    if (user) {
+        await logSystemAction(supabase, user.id, 'UPDATE', `Updated task '${task.title}'`, task.id);
+    }
+
+    // Recalculate achieved_score if reviews are complete (in case total_score changed)
+    const { count: totalUsers } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true });
+
+    if (totalUsers) {
+        const { data: reviews } = await supabase
+            .from('achievement_reviews')
+            .select('score')
+            .eq('task_id', task.id);
+
+        const currentReviewCount = reviews?.length || 0;
+        const requiredReviews = totalUsers - 1;
+
+        if (currentReviewCount >= requiredReviews && requiredReviews > 0) {
+            const maxPossibleScore = requiredReviews * 5;
+            const actualScoreSum = reviews?.reduce((sum, r) => sum + r.score, 0) || 0;
+            const ratio = actualScoreSum / maxPossibleScore;
+
+            const finalAchievedScore = Math.round(task.total_score * ratio);
+
+            await supabase
+                .from('tasks')
+                .update({ achieved_score: finalAchievedScore })
+                .eq('id', task.id);
+        }
     }
 
     revalidatePath('/');
@@ -290,6 +378,9 @@ export async function submitVote(taskId: number, score: number) {
         return { error: voteError.message };
     }
 
+    // Log Action - Removed to reduce noise as per user request
+    // await logSystemAction(supabase, user.id, 'VOTE', `Voted ${score} points`, taskId);
+
     // Recalculate total_score by summing all votes for this task
     const { data: votesData, error: sumError } = await supabase
         .from('votes')
@@ -314,18 +405,56 @@ export async function submitVote(taskId: number, score: number) {
         return { error: updateError.message };
     }
 
+    // Recalculate achieved_score if reviews are complete
+    // 1. Get total team size
+    const { count: totalUsers } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true });
+
+    if (totalUsers) {
+        // 2. Get current reviews
+        const { data: reviews } = await supabase
+            .from('achievement_reviews')
+            .select('score')
+            .eq('task_id', taskId);
+
+        const currentReviewCount = reviews?.length || 0;
+        const requiredReviews = totalUsers - 1; // Exclude assignee
+
+        // 3. If reviews are complete, recalculate achieved_score with new total_score
+        if (currentReviewCount >= requiredReviews && requiredReviews > 0) {
+            const maxPossibleScore = requiredReviews * 5;
+            const actualScoreSum = reviews?.reduce((sum, r) => sum + r.score, 0) || 0;
+            const ratio = actualScoreSum / maxPossibleScore;
+
+            // Calculate final achieved score based on NEW total_score
+            const finalAchievedScore = Math.round(totalScore * ratio);
+
+            // Update task
+            await supabase
+                .from('tasks')
+                .update({ achieved_score: finalAchievedScore })
+                .eq('id', taskId);
+        }
+    }
+
     revalidatePath('/');
     return { success: true };
 }
 
 export async function deleteTask(id: number) {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
     const { error } = await supabase.from('tasks').delete().eq('id', id);
 
     if (error) {
         console.error('Error deleting task:', error);
         return { error: error.message };
+    }
+
+    if (user) {
+        await logSystemAction(supabase, user.id, 'DELETE', `Deleted task #${id}`, id);
     }
 
     revalidatePath('/');
@@ -355,6 +484,9 @@ export async function claimTask(taskId: number) {
         console.error('Error claiming task:', error);
         return { error: error.message };
     }
+
+    // Log Action
+    await logSystemAction(supabase, user.id, 'CLAIM', `Claimed task`, taskId);
 
     revalidatePath('/');
     return { success: true };
@@ -435,6 +567,10 @@ export async function submitActivity(taskId: number, formData: FormData) {
         return { error: insertError.message };
     }
 
+    // Log Action
+    await logSystemAction(supabase, user.id, 'REPORT', `Submitted activity report #${nextSequence}`, taskId);
+
     revalidatePath('/');
     return { success: true };
 }
+

@@ -24,6 +24,8 @@ export interface User {
     id: string; // UUID from auth.users
     name: string;
     email?: string;
+    role?: string;
+    created_at?: string;
 }
 
 // Achievement Review type matching the achievement_reviews table schema

@@ -39,7 +39,7 @@ export default function SignUpPage() {
 
             if (data.user) {
                 // Success! Redirect to tasks page
-                router.push('/task');
+                router.push('/dashboard');
             }
         } catch (err: any) {
             setError(err.message || 'An error occurred during sign up');
