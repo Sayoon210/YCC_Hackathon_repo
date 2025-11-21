@@ -1,15 +1,12 @@
 'use server';
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/utils/supabase/server';
 import { Task, User } from '@/types/task';
 import { revalidatePath } from 'next/cache';
 
-// Initialize Supabase Client for Server Actions
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 export async function getUsers(): Promise<User[]> {
+    const supabase = await createClient();
+
     const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -24,6 +21,8 @@ export async function getUsers(): Promise<User[]> {
 }
 
 export async function getCurrentUser(): Promise<User | null> {
+    const supabase = await createClient();
+
     const { data: { user }, error } = await supabase.auth.getUser();
 
     if (error || !user) {
@@ -41,11 +40,16 @@ export async function getCurrentUser(): Promise<User | null> {
 }
 
 export async function getTasks(): Promise<Task[]> {
+    const supabase = await createClient();
+
+    // Get current user to fetch their votes
+    const { data: { user } } = await supabase.auth.getUser();
+
     const { data, error } = await supabase
         .from('tasks')
         .select(`
       *,
-      users (
+      assignee:users!member_id (
         name
       )
     `)
@@ -56,14 +60,37 @@ export async function getTasks(): Promise<Task[]> {
         return [];
     }
 
+    // If user is logged in, fetch their votes for these tasks
+    let userVotes: { [taskId: number]: number } = {};
+    if (user) {
+        const taskIds = data.map(t => t.id);
+        const { data: votesData } = await supabase
+            .from('votes')
+            .select('task_id, score')
+            .eq('user_id', user.id)
+            .in('task_id', taskIds);
+
+        if (votesData) {
+            userVotes = votesData.reduce((acc, vote) => {
+                acc[vote.task_id] = vote.score;
+                return acc;
+            }, {} as { [taskId: number]: number });
+        }
+    }
+
     // Map DB result to Task interface
-    return data.map((item: any) => ({
+    const mappedTasks = data.map((item: any) => ({
         ...item,
-        assignee_name: item.users?.name || 'Unassigned',
+        assignee_name: item.assignee?.name || 'Unassigned',
+        my_vote: userVotes[item.id] || undefined,
     }));
+
+    return mappedTasks;
 }
 
 export async function createTask(formData: FormData) {
+    const supabase = await createClient();
+
     const title = formData.get('title') as string;
     const description = formData.get('description') as string;
 
@@ -87,6 +114,8 @@ export async function createTask(formData: FormData) {
 }
 
 export async function updateTask(task: Task) {
+    const supabase = await createClient();
+
     const { error } = await supabase
         .from('tasks')
         .update({
@@ -106,15 +135,54 @@ export async function updateTask(task: Task) {
     return { success: true };
 }
 
-export async function updateTaskScore(id: number, score: number) {
-    const { error } = await supabase
-        .from('tasks')
-        .update({ total_score: score })
-        .eq('id', id);
+export async function submitVote(taskId: number, score: number) {
+    const supabase = await createClient();
 
-    if (error) {
-        console.error('Error updating score:', error);
-        return { error: error.message };
+    // Get current user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+        return { error: 'You must be logged in to vote' };
+    }
+
+    // Upsert vote (insert or update)
+    const { error: voteError } = await supabase
+        .from('votes')
+        .upsert({
+            task_id: taskId,
+            user_id: user.id,
+            score: score,
+        }, {
+            onConflict: 'task_id,user_id'
+        });
+
+    if (voteError) {
+        console.error('Error submitting vote:', voteError);
+        return { error: voteError.message };
+    }
+
+    // Recalculate total_score by summing all votes for this task
+    const { data: votesData, error: sumError } = await supabase
+        .from('votes')
+        .select('score')
+        .eq('task_id', taskId);
+
+    if (sumError) {
+        console.error('Error calculating total:', sumError);
+        return { error: sumError.message };
+    }
+
+    const totalScore = votesData.reduce((sum, vote) => sum + Number(vote.score), 0);
+
+    // Update tasks table with new total
+    const { error: updateError } = await supabase
+        .from('tasks')
+        .update({ total_score: totalScore })
+        .eq('id', taskId);
+
+    if (updateError) {
+        console.error('Error updating task total:', updateError);
+        return { error: updateError.message };
     }
 
     revalidatePath('/');
@@ -122,6 +190,8 @@ export async function updateTaskScore(id: number, score: number) {
 }
 
 export async function deleteTask(id: number) {
+    const supabase = await createClient();
+
     const { error } = await supabase.from('tasks').delete().eq('id', id);
 
     if (error) {
@@ -134,12 +204,17 @@ export async function deleteTask(id: number) {
 }
 
 export async function claimTask(taskId: number) {
-    // Get current user
+    const supabase = await createClient();
+
+    // Get current user from session (now works with cookies!)
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
+        console.error('Auth error:', authError);
         return { error: 'You must be logged in to claim a task' };
     }
+
+    console.log('Claiming task for user:', user.id);
 
     // Update task to assign to current user
     const { error } = await supabase

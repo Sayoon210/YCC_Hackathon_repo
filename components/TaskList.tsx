@@ -5,7 +5,7 @@ import { TaskBlock } from '@/components/TaskBlock';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { Task } from '@/types/task';
-import { createTask, updateTask, updateTaskScore, deleteTask } from '@/app/actions';
+import { createTask, updateTask, submitVote, deleteTask } from '@/app/actions';
 
 interface TaskListProps {
     initialTasks: Task[];
@@ -41,8 +41,8 @@ export default function TaskList({ initialTasks, currentUserId }: TaskListProps)
         }
     };
 
-    const handleVote = async (taskId: number, newTotalScore: number) => {
-        await updateTaskScore(taskId, newTotalScore);
+    const handleVote = async (taskId: number, score: number) => {
+        await submitVote(taskId, score);
     };
 
     return (

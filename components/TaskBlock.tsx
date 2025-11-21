@@ -16,7 +16,7 @@ interface TaskBlockProps {
     task: Task;
     onUpdate: (updatedTask: Task) => void;
     onDelete: (taskId: number) => void;
-    onVote: (taskId: number, newTotalScore: number) => void;
+    onVote: (taskId: number, score: number) => void; // Changed: now takes score, not total
     defaultEditing?: boolean;
     currentUserId?: string;
 }
@@ -25,11 +25,8 @@ export function TaskBlock({ task, onUpdate, onDelete, onVote, defaultEditing = f
     const [isEditing, setIsEditing] = useState(defaultEditing);
     const [editedTask, setEditedTask] = useState<Task>(task);
 
-    // Voting State (Local for now, then syncs total to DB)
-    const [voterName, setVoterName] = useState('');
-    const [voteScore, setVoteScore] = useState([5]);
-    // We keep a local votes array to show the list, even if DB only stores total
-    const [localVotes, setLocalVotes] = useState<Vote[]>([]);
+    // Voting State - Initialize with user's existing vote or 0
+    const [myVoteScore, setMyVoteScore] = useState<number[]>([task.my_vote || 0]);
 
     const handleSave = () => {
         onUpdate(editedTask);
@@ -45,28 +42,10 @@ export function TaskBlock({ task, onUpdate, onDelete, onVote, defaultEditing = f
         }
     };
 
-    const handleAddVote = () => {
-        if (!voterName.trim()) return;
-
-        const newVote: Vote = {
-            voter: voterName,
-            score: voteScore[0],
-        };
-
-        const updatedVotes = [...localVotes, newVote];
-        setLocalVotes(updatedVotes);
-
-        // Calculate new total score
-        // Note: This simple addition logic assumes we are adding to the *current* DB total
-        // In a real concurrent app, this might be risky, but fine for now.
-        // Or, if we want "Assigned Score" to be purely the sum of *these* votes:
-        const newTotal = updatedVotes.reduce((sum, v) => sum + v.score, 0);
-
-        // Update DB
-        onVote(task.id, newTotal);
-
-        setVoterName('');
-        setVoteScore([5]);
+    const handleVoteChange = (value: number[]) => {
+        setMyVoteScore(value);
+        // Submit vote immediately on slider change
+        onVote(task.id, value[0]);
     };
 
     if (isEditing) {
@@ -150,44 +129,72 @@ export function TaskBlock({ task, onUpdate, onDelete, onVote, defaultEditing = f
                     </div>
                 </div>
 
-                {/* Voting Section */}
-                <div className="border-t pt-4 mt-4">
-                    <h4 className="text-sm font-semibold mb-3">Score Voting</h4>
-
-                    <div className="flex flex-col gap-4 mb-4 p-3 bg-secondary/20 rounded-lg">
-                        <div className="flex gap-2">
-                            <Input
-                                placeholder="Voter Name"
-                                value={voterName}
-                                onChange={(e) => setVoterName(e.target.value)}
-                                className="h-8 text-sm"
-                            />
-                            <Button size="sm" onClick={handleAddVote} disabled={!voterName.trim()}>
-                                <Plus className="h-3 w-3 mr-1" /> Add Vote
-                            </Button>
+                {/* Voting Section - Only enabled for other users' tasks */}
+                {!task.member_id ? (
+                    // Unassigned task - voting disabled
+                    <div className="border-t pt-4 mt-4">
+                        <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-semibold text-muted-foreground">Score Voting</h4>
+                            <Badge variant="outline" className="text-xs">
+                                Task must be claimed first
+                            </Badge>
                         </div>
-                        <div className="flex items-center gap-4">
-                            <span className="text-sm font-medium w-20">Score: {voteScore[0]}</span>
+                        <div className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg opacity-50">
+                            <span className="text-sm font-medium w-24 text-muted-foreground">Your Score: 0</span>
                             <Slider
-                                value={voteScore}
-                                onValueChange={setVoteScore}
+                                value={[0]}
+                                max={10}
+                                step={0.5}
+                                className="flex-1"
+                                disabled
+                            />
+                        </div>
+                    </div>
+                ) : task.member_id === currentUserId ? (
+                    // Own task - voting disabled
+                    <div className="border-t pt-4 mt-4">
+                        <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-semibold text-muted-foreground">Score Voting</h4>
+                            <Badge variant="outline" className="text-xs">
+                                Cannot vote on your own task
+                            </Badge>
+                        </div>
+                        <div className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg opacity-50">
+                            <span className="text-sm font-medium w-24 text-muted-foreground">Your Score: 0</span>
+                            <Slider
+                                value={[0]}
+                                max={10}
+                                step={0.5}
+                                className="flex-1"
+                                disabled
+                            />
+                        </div>
+                    </div>
+                ) : (
+                    // Other user's task - voting enabled
+                    <div className="border-t pt-4 mt-4">
+                        <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-semibold">Score Voting</h4>
+                            {task.my_vote !== undefined && (
+                                <Badge variant="secondary" className="text-xs">
+                                    You voted: {task.my_vote}
+                                </Badge>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-4 p-3 bg-secondary/20 rounded-lg">
+                            <span className="text-sm font-medium w-24">Your Score: {myVoteScore[0]}</span>
+                            <Slider
+                                value={myVoteScore}
+                                onValueChange={handleVoteChange}
                                 max={10}
                                 step={0.5}
                                 className="flex-1"
                             />
                         </div>
                     </div>
+                )}
 
-                    {localVotes.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                            {localVotes.map((vote, index) => (
-                                <Badge key={index} variant="outline" className="text-xs">
-                                    {vote.voter}: {vote.score}
-                                </Badge>
-                            ))}
-                        </div>
-                    )}
-                </div>
 
             </CardContent>
         </Card>

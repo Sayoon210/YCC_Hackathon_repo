@@ -1,6 +1,10 @@
+// Vote type matching the votes table schema
 export interface Vote {
-    voter: string;
+    id: string; // UUID
+    task_id: number;
+    user_id: string; // UUID
     score: number;
+    created_at: string;
 }
 
 // User type matching the users table schema (with Auth UUID)
@@ -20,5 +24,5 @@ export interface Task {
     progress: number | null;
     achieved_score: number | null;
     assignee_name?: string; // Joined from users table
-    votes?: Vote[]; // Optional, for local state
+    my_vote?: number; // Current user's vote score (if exists)
 }
